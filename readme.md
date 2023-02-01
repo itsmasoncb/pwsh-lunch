@@ -1,6 +1,6 @@
 # pwsh-work readme
 
-PowerShell Scripts learned through a variety of sources:
+Collection of PowerShell Scripts & Resources gathered through a variety of methods:
 - PowerShell in a Month of Lunches, 4th Edition.
 - Through necessity and creativity.
 - Edits made to found Scripts via work or the internet.
