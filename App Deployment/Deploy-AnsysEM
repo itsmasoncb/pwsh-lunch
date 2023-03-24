@@ -108,18 +108,18 @@ Try {
     ##*===============================================
     ## Variables: Application
     [String]$appVendor = 'ANSYS INC'
-    [String]$appName = 'Ansys Fluids & Structures'
+    [String]$appName = 'Ansys Electromagnetics'
     [String]$appVersion = '2023'
     [String]$appArch = 'x64'
     [String]$appLang = 'EN'
     [String]$appRevision = '01'
     [String]$appScriptVersion = '1.0.0'
-    [String]$appScriptDate = '02/28/2023'
+    [String]$appScriptDate = '03/09/2023'
     [String]$appScriptAuthor = 'Mason'
     ##*===============================================
     ## Variables: Install Titles (Only set here to override defaults set by the toolkit)
-    [String]$installName = 'Ansys Install'
-    [String]$installTitle = 'Ansys Fluids & Structures 2023 R1'
+    [String]$installName = 'AnsysEM Install'
+    [String]$installTitle = 'Ansys Electromagnetics 2023 R1'
 
     ##* Do not modify section below
     #region DoNotModify
@@ -188,9 +188,9 @@ Try {
         Show-InstallationProgress
 
         ## Since older programs are uninstalled with SCCM supersedence, we can just remove some leftover crud that tends to stick around, like start menus. 
-        If (Test-Path -Path "$envAllUsersProfile\Microsoft\Windows\Start Menu\Programs\Ansys 20*") {
+        If (Test-Path -Path "$envAllUsersProfile\Microsoft\Windows\Start Menu\Programs\Ansys EM*") {
             Write-Log -Message "Removing Old Ansys Start Menu Shortcuts."
-            Remove-Item -Path "$envAllUsersProfile\Microsoft\Windows\Start Menu\Programs\Ansys 20*" -Force -Recurse -ErrorAction SilentlyContinue
+            Remove-Item -Path "$envAllUsersProfile\Microsoft\Windows\Start Menu\Programs\Ansys EM*" -Force -Recurse -ErrorAction SilentlyContinue
             Start-Sleep -Seconds 5
         }
 
@@ -203,19 +203,19 @@ Try {
         # Non MSI Install*
 
         ## <Perform Installation tasks here>
-        $MinFreeSpace_GB = 65
+        $MinFreeSpace_GB = 30
         $CDriveMinFree = [string]::IsNullOrEmpty((Get-CimInstance -ClassName CIM_LogicalDisk | Where-Object { $_.DeviceID -eq 'C:' -and $_.FreeSpace -lt $MinFreeSpace_GB * 1GB }))      
         If ($CDriveMinFree)
         {
         Write-Log -Message "The C: drive has at least $($MinFreeSpace_GB) GB free."
 
         ## Install Ansys 2023
-        $ExePath = Get-ChildItem -Path "$dirFiles" -Include setup.exe -File -Recurse -ErrorAction SilentlyContinue
+        $ExePath = Get-ChildItem -Path "$dirFiles\AnsysEM" -Include setup.exe -File -Recurse -ErrorAction SilentlyContinue
         If($ExePath.Exists)
         {
         Write-Log -Message "Found $($ExePath.FullName), now attempting to install $installTitle."
         Show-InstallationProgress "Installing $installTitle. This may take some time. Please wait..."
-        Execute-Process -Path "$ExePath" -Parameters '-silent' -WindowStyle Hidden
+        Execute-Process -Path "$dirFiles\AnsysEM\setup.exe" -Parameters "/s /f1""$dirFiles\AnsysEM\SilentInstall.iss"""
         Sleep -Seconds 5
         }
         }
@@ -233,10 +233,10 @@ Try {
         [String]$installPhase = 'Post-Installation'
 
         ## ANSYS requires a license and these are set via env variables. We will do that here.
-        $env:ANSYS231_DIR = ‘C:\Program Files\ANSYS Inc\v231\ANSYS'
-        $env:AWP_ROOT231 = ‘C:\Program Files\ANSYS Inc\v231'
-        $env:CADOE_LIBDIR231 = ‘C:\Program Files\ANSYS Inc\v231\CommonFiles\Language\en-us'
-        $env:P_SCHEMA = ‘C:\Program Files\ANSYS Inc\v231\AISOL\CADIntegration\Parasolid\PSchema'
+        $env:ANSYSEM_ROOT231 = ‘C:\Program Files\AnsysEM\v231\Win64'
+        $env:LSTC_LICENSE = ‘Ansys'
+        $env:SIMPLORER_HOME = ‘C:\Program Files\AnsysEM\v231\Win64'
+        $env:SIWAVE_INSTALL_DIR = ‘C:\Program Files\AnsysEM\v231\Win64'
 
         ## Display a message at the end of the install
         If (-not $useDefaultMsi) {
@@ -267,29 +267,27 @@ Try {
         # Non MSI Install*
 
         ## <Perform Uninstallation tasks here> 
-        ## Uninstall Ansys Student 2022 (If Present)
-        $AnsysFS231 = Get-ChildItem -Path "$envProgramFiles\ANSYS Inc\v231\Uninstall.exe" -ErrorAction SilentlyContinue
 
-        If($AnsysFS231.Exists)
-        {
-        ## Uninstall Ansys Student 2022 R1
-        Write-Log -Message "Found $($AnsysFS231.FullName), now attempting to uninstall $installTitle R1."
-        Execute-Process -Path "$AnsysFS231" -Parameters "-silent" -WindowStyle Hidden -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 5
-
-        If (Test-Path -Path "$envProgramFiles\ANSYS Inc\v231\") {
-        Write-Log -Message "Cleaning up $installTitle Program Files Directory."
-        Remove-Item -Path "$envProgramFiles\ANSYS Inc\v231\" -Force -Recurse -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 5
-        }
-        }
-
-        ## Remove Ansys 2023 Start Menu Shortcuts (If Present)
-        If (Test-Path -Path "$envAllUsersProfile\Microsoft\Windows\Start Menu\Programs\Ansys 2023*") {
-            Write-Log -Message "Removing Ansys 2023 Start Menu Shortcuts."
-            Remove-Item -Path "$envAllUsersProfile\Microsoft\Windows\Start Menu\Programs\Ansys 2023*" -Force -Recurse -ErrorAction SilentlyContinue
+        ## Uninstall Ansys (The installer fails to uninstall with the setup.exe becuase it sees itself running... stupid. But we wil just remove files instead.)
+        # This leave some very minor stray registry stuff but even the uninstaller misses that on the last version. AKA, Ansys installers are no fun.
+        If (Test-Path -Path "$envProgramFiles\AnsysEM\v231") {
+            Write-Log -Message "Removing Ansys 2023 EM Program Files."
+            Remove-Item -Path "$envProgramFiles\AnsysEM\v231" -Force -Recurse -ErrorAction SilentlyContinue
             Start-Sleep -Seconds 5
             }
+
+        ## Remove Ansys 2023 Start Menu Shortcuts (If Present)
+        If (Test-Path -Path "$envAllUsersProfile\Microsoft\Windows\Start Menu\Programs\Ansys EM*") {
+            Write-Log -Message "Removing Ansys 2023 Start Menu Shortcuts."
+            Remove-Item -Path "$envAllUsersProfile\Microsoft\Windows\Start Menu\Programs\Ansys EM*" -Force -Recurse -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 5
+            }
+
+        ## Remove Ansys EM env variables.
+        [Environment]::SetEnvironmentVariable('ANSYSEM_ROOT231','')
+        [Environment]::SetEnvironmentVariable('LSTC_LICENSE','')
+        [Environment]::SetEnvironmentVariable('SIMPLORER_HOME','')
+        [Environment]::SetEnvironmentVariable('SIWAVE_INSTALL_DIR','')
 
         ##*===============================================
         ##* POST-UNINSTALLATION
